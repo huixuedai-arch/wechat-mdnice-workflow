@@ -1,0 +1,21 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>公众号草稿与预览</title><link rel="stylesheet" href="popup.css"></head><body>
+<h1>公众号草稿与预览 <small>1.0.0</small></h1>
+<details id="setup"><summary>本机设置（首次填写，后续沿用）</summary>
+<label>公众号标识 / 名称<input id="account" placeholder="为每个公众号使用固定且不同的名称"></label>
+<label>文章作者<input id="author" maxlength="8"></label><label>原创作者<input id="original-author" maxlength="8" placeholder="留空则同文章作者"></label>
+<label>预览接收微信号<input id="recipient"></label><label class="check"><input type="checkbox" id="original" checked> 默认声明文字原创（只用于自己的原创稿件）</label>
+<button id="settings">保存本机设置</button><label>或导入本机配置 JSON<input type="file" id="profile-import" accept=".json"></label><p>设置只存本机。微信公众号可能将两个作者联动锁定；遇到不同作者不能兼容时会停止。</p></details>
+<h2>本篇文章</h2><label>加载 MDnice 文章包<input type="file" id="package" accept=".json,application/json"></label><div id="article-info">尚未加载</div>
+<details><summary>在 MDnice 页面生成文章包</summary>
+<label>文章标题<input id="capture-title" maxlength="64"></label><label>摘要<textarea id="capture-summary" maxlength="120"></textarea></label><label>封面使用正文第几张图片<input id="capture-cover" type="number" value="1" min="1"></label>
+<button id="capture">提取当前 MDnice 排版并下载文章包</button><p>先在 MDnice 排好版并保存。这里读取实际预览及样式，不自行替换主题。</p></details>
+<p id="config-summary"></p><label class="check"><input id="consent" type="checkbox">我已核对当前公众号和本篇稿件，授权按上述配置执行所选操作。</label>
+<button data-mode="full">空白编辑页：导入 → 保存核对 → 发一次预览</button>
+<button data-mode="continue">继续已停止的导入 / 封面步骤（同篇）</button>
+<button data-mode="resume">已保存草稿：读回核对 → 发一次预览</button>
+<button data-mode="metadata">仅更新作者和原创 → 保存核对（不发预览）</button>
+<button data-mode="check">只读核对作者和原创（不保存、不发送）</button>
+<button id="status">查看进度</button><button id="stop">停止后续操作</button>
+<button id="received">我已收到本篇预览，记录完成</button><button id="report">下载精简诊断（不含正文或登录令牌）</button>
+<pre id="log" role="status"></pre><p>插件没有正式发表功能。不要删除扩展来升级，否则会丢失防重复发送记录。</p>
+<script src="core.js"></script><script src="editor-adapter.js"></script><script src="capture.js"></script><script src="popup.js"></script></body></html>

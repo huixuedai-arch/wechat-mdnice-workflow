@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "MDnice 公众号草稿与预览",
+  "version": "1.0.0",
+  "description": "加载 MDnice 文章包，使用本机署名配置，保存核对并发送一次预览；不正式发表。",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "unlimitedStorage"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "worker.js"
+  }
+}

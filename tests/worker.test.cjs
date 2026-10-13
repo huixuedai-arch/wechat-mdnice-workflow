@@ -1,0 +1,25 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),{webcrypto}=require('node:crypto');
+const root=require('node:path').join(__dirname,'../extension/');const store={};let listener;const injected=[];let currentTab=1;const tabs=new Map([[1,{url:'https://mp.weixin.qq.com/editor'}],[2,{url:'https://mp.weixin.qq.com/editor'}]]);
+const chrome={storage:{local:{get:async k=>({[k]:structuredClone(store[k])}),set:async data=>Object.assign(store,structuredClone(data))}},scripting:{executeScript:async x=>{injected.push(x);return []}},runtime:{onMessage:{addListener:f=>listener=f},getManifest:()=>({version:'1.0.0'})},tabs:{get:async id=>tabs.get(id),reload:async()=>{},onUpdated:{addListener(){}}}};
+const ctx=vm.createContext({chrome,URL,crypto:webcrypto,TextEncoder,Date,structuredClone,console,setTimeout});ctx.importScripts=f=>vm.runInContext(fs.readFileSync(root+f,'utf8'),ctx);vm.runInContext(fs.readFileSync(root+'worker.js','utf8'),ctx);
+const call=(type,extra={},fromPage=false)=>new Promise(resolve=>listener({type,tabId:currentTab,...extra},fromPage?{tab:{id:currentTab},url:tabs.get(currentTab).url}:{},resolve));
+(async()=>{
+ const html='<section><p>Sample</p><img src="https://images.example.org/a.png"></section>';const sha=await ctx.EditorialCore.sha(html);
+ const pack={schemaVersion:1,articleId:'demo-article',title:'Demo',summary:'',html,source:{kind:'mdnice-rendered',url:'https://editor.mdnice.com/?outId=demo',htmlSha256:sha},images:[{mdniceUrl:'https://images.example.org/a.png'}],coverIndex:0};
+ assert(!(await call('settings',{profile:{accountKey:'account',author:'Alice',originalAuthor:'Alice',recipient:'reader_a',original:true}})).error);
+ assert(!(await call('package',{article:pack})).error);
+ assert((await call('start',{mode:'full',consent:false})).error);
+ const parallel=await Promise.all([call('start',{mode:'full',consent:true}),call('start',{mode:'full',consent:true})]);assert.equal(parallel.filter(x=>!x.error).length,1);
+ let state=await call('load',{},true);assert.equal(state.profile.recipient,'reader_a');
+ await call('settings',{profile:{accountKey:'account',author:'Bob',recipient:'reader_b',original:false}});assert.equal((await call('load',{},true)).profile.recipient,'reader_a','running config frozen');
+ currentTab=2;assert((await call('start',{mode:'resume',consent:true})).error,'cross-tab concurrent blocked');currentTab=1;
+ assert((await call('update',{patch:{profile:{recipient:'bad'}}},true)).error);
+ await call('update',{patch:{stage:'verified',draftId:'draft-a'}},true);
+ const sends=await Promise.all([call('update',{patch:{stage:'preview-pending'}},true),call('update',{patch:{stage:'preview-pending'}},true)]);assert.equal(sends.filter(x=>!x.error).length,1);
+ await call('update',{patch:{stage:'preview-unknown'}},true);currentTab=2;tabs.set(2,{url:'https://mp.weixin.qq.com/editor?appmsgid=draft-a'});
+ assert((await call('start',{mode:'resume',consent:true})).error,'unknown sends never retried');
+ const meta=await call('start',{mode:'metadata',consent:true});assert(!meta.error,meta.error);assert.equal((await call('load',{},true)).profile.author,'Bob');
+ assert((await call('update',{patch:{stage:'preview-pending'}},true)).error,'metadata must not send');
+ await call('stop');assert((await call('update',{patch:{stage:'saving'}},true)).error);
+ console.log('PASS service-worker persistent ledger, new tab recovery, concurrency, frozen settings, unknown-send guard, metadata no-send');
+})().catch(e=>{console.error(e);process.exitCode=1});
