@@ -2,6 +2,8 @@
 
 一个可配置 Skill 和 Chrome Manifest V3 插件。**一次安装，作者/原创作者/微信号自己配置，每篇加载新的 MDnice 文章包。正式发表始终由使用者手工完成。**
 
+第一次使用请先看 [Skill 与插件完整入门步骤](docs/quickstart.md)。
+
 ## 安装一次
 
 1. 从 [Releases](https://github.com/huixuedai-arch/wechat-mdnice-workflow/releases) 下载插件 ZIP，解压到一个固定目录。
