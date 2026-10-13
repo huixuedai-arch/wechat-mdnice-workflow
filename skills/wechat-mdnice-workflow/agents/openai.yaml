@@ -1,0 +1,4 @@
+interface:
+  display_name: "公众号排版与预览"
+  short_description: "经过 MDnice 排版、署名与原创设置、保存核验后发送微信预览"
+  default_prompt: "使用 $wechat-mdnice-workflow 将这篇文章排版、保存并发送预览，正式发表由我完成。"

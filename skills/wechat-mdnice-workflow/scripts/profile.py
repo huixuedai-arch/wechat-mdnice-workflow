@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+"""Create a local profile; never sends messages or contacts websites."""
+import argparse,json,os
+from pathlib import Path
+p=argparse.ArgumentParser()
+p.add_argument('--author',required=True)
+p.add_argument('--original-author')
+p.add_argument('--recipient',required=True)
+p.add_argument('--output-root',required=True)
+p.add_argument('--original',choices=['enabled','disabled'],required=True)
+p.add_argument('--profile',default=str(Path.home()/'.config/wechat-editorial/profile.json'))
+p.add_argument('--replace',action='store_true')
+a=p.parse_args()
+author=a.author.strip();original=(a.original_author or author).strip();recipient=a.recipient.strip()
+if not author or not original or len(author)>8 or len(original)>8:p.error('两个作者须为 1–8 个字符')
+if not recipient or any(c.isspace() for c in recipient):p.error('预览微信号不能为空或含空格')
+root=Path(a.output_root).expanduser()
+if not root.is_absolute():p.error('保存目录须为绝对路径')
+path=Path(a.profile).expanduser()
+if path.exists() and not a.replace:p.error('已有配置；使用 --replace 明确更新')
+data=dict(schemaVersion=1,author=author,originalAuthor=original,previewRecipient=recipient,outputRoot=str(root),originalDeclaration=a.original=='enabled',publishMode='manual')
+path.parent.mkdir(parents=True,exist_ok=True)
+flags=os.O_WRONLY|os.O_CREAT|(os.O_TRUNC if a.replace else os.O_EXCL)
+fd=os.open(path,flags,0o600)
+with os.fdopen(fd,'w') as f:json.dump(data,f,ensure_ascii=False,indent=2)
+os.chmod(path,0o600)
+print('本地配置已保存：'+str(path))

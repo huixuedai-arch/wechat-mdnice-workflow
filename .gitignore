@@ -1,0 +1,10 @@
+profile.json
+*.local.json
+.env*
+private/
+articles/
+diagnostics/
+backups/
+node_modules/
+__pycache__/
+.DS_Store
