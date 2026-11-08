@@ -1,13 +1,22 @@
 {
   "name": "wechat-mdnice-workflow",
-  "version": "1.0.0",
+  "version": "1.9.5",
   "private": true,
   "scripts": {
     "test": "node tests/core.test.cjs && node tests/worker.test.cjs",
-    "test:browser": "node tests/browser.test.cjs"
+    "test:browser": "node tests/browser.test.cjs",
+    "test:popup": "node tests/popup.test.cjs",
+    "test:newspic": "node tests/newspic.test.cjs",
+    "test:diagnostic": "node tests/diagnostic.test.cjs",
+    "test:prosemirror": "node tests/prosemirror.test.cjs",
+    "test:feedback": "node tests/feedback.test.cjs"
   },
   "devDependencies": {
-    "playwright": "1.62.1"
+    "playwright": "1.62.1",
+    "prosemirror-model": "1.25.13",
+    "prosemirror-state": "1.4.4",
+    "prosemirror-view": "1.42.9",
+    "esbuild": "0.28.2"
   },
   "engines": {
     "node": ">=20"

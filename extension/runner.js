@@ -133,7 +133,7 @@
    const fromBody=menu?[...menu.querySelectorAll('a.js_selectCoverFromContent')]:[];
    if(fromBody.length!==1)throw Object.assign(Error('新封面菜单按钮缺失或不唯一'),{details:{coverComponent:area.outerHTML.slice(0,18000)}});
    const findPicker=()=>[...document.querySelectorAll('[role="dialog"],.weui-desktop-dialog')].find(d=>visible(d)&&/选择图片/.test(d.textContent)&&/正文/.test(d.textContent));
-   const imagePath=u=>{try{return new URL(u,location.href).pathname;}catch{return '';}};
+   const imagePath=u=>{try{return imageIdentity(new URL(u,location.href).href);}catch{return '';}};
    const target=imagePath(verify(a)[a.coverIndex]);
    const findCrop=()=>[...document.querySelectorAll('[role="dialog"],.weui-desktop-dialog')].find(d=>visible(d)&&d.querySelector('.cover-edit-new')&&d.textContent.includes('编辑封面'));
    let crop=findCrop();
@@ -151,8 +151,13 @@
    await click(next);
    crop=await until(findCrop,'新的编辑封面裁剪窗口');
    }
-   const cropImages=[...crop.querySelectorAll('img.crop-img')];
-   if(!cropImages.length||!cropImages.every(i=>wxImage(i.src)&&imagePath(i.src)===target))throw Error('当前裁剪窗口不是预定封面图片，未确认');
+   // The dialog mounts before its image src is assigned. Size variants retain identity.
+   await until(()=>{
+    const cropImages=[...crop.querySelectorAll('.cover-edit-new img')];
+    const ready=cropImages.filter(i=>wxImage(i.currentSrc||i.src));
+    if(ready.some(i=>imagePath(i.currentSrc||i.src)!==target))throw Error('当前裁剪窗口不是预定封面图片，未确认');
+    return ready.length>0;
+   },'裁剪图片加载并匹配预定封面',15000);
    const done=await until(()=>{const buttons=[...crop.querySelectorAll('button')].filter(e=>visible(e)&&e.textContent.trim()==='确认'&&!e.disabled);return buttons.length===1&&buttons[0];},'裁剪确认按钮可用');
    await click(done);await until(()=>!visible(crop),'裁剪确认完成');
    await until(()=>{const cover=area.querySelector('.js_cover_preview_new');return visible(cover)&&getComputedStyle(cover).backgroundImage!=='none'&&/https?:/.test(getComputedStyle(cover).backgroundImage);},'封面预览已生成');

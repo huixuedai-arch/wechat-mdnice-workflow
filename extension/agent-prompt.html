@@ -1,0 +1,41 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="google" content="notranslate"><title>Agent 指令 · 两种版本</title><style>body{max-width:840px;margin:40px auto;padding:0 24px;background:#f5f7f5;color:#283e31;font:14px/1.8 system-ui}h1{font-size:25px}h2{font-size:19px}h3{font-size:15px}section{background:white;border:1px solid #dfe7e1;border-radius:12px;padding:24px;margin:20px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.8 system-ui}button{float:right;border:0;background:#27845a;color:white;border-radius:7px;padding:9px 15px;cursor:pointer}details{color:#607365;font-size:12px}summary{cursor:pointer}.note{color:#67766b}</style></head><body><h1>给 Agent 的文章指令</h1><p>没有固定风格选 A；已有写作要求或定稿选 B。每个版本都有中文和英文。</p><p class="note">复制时会一并带上文章包格式，无需新会话记住 Skill。若换到新会话，请同时附上原稿、素材或风格参考。</p><section><h2>版本 A · 使用默认写作要求</h2><button data-copy="zh" data-spec="spec-zh">复制完整指令 / Copy</button><h3>中文</h3><pre id="zh">请为我准备一篇微信公众号文章和配图。
+
+写作：口语化、短段落、清晰小标题；核实关键事实，不虚构体验。每个主要部分按内容需要配图，优先使用提供的素材或可使用的官方图片。
+
+主题或原稿：[填写主题 / 附上原稿]
+保存目录：[填写本机绝对路径]
+
+交付：在保存目录下新建以文章标题命名的文件夹。正文保存为 article.md，图片放在 images/，依次命名 01-简短描述.png、02-简短描述.jpg，保留实际图片格式。图文对应位置写在原稿中，并推荐一张封面。保留原稿、图片及可导入插件的 article-package.json，最后给出文件路径。</pre><button data-copy="en" data-spec="spec-en">复制完整指令 / Copy</button><h3>English</h3><pre id="en">Prepare a WeChat article and its illustrations.
+
+Writing: Use conversational language, short paragraphs and clear headings. Verify key facts and do not invent experiences. Illustrate major sections where useful, preferring supplied material or usable official images.
+
+Topic or draft: [describe / attach]
+Output directory: [absolute local path]
+
+Deliverables: Create a folder named after the article title under the output directory. Save article.md and images/01-short-description.png, images/02-short-description.jpg, preserving actual image formats. Mark image placement in the draft and recommend a cover. Keep the editable article, images and an importable article-package.json. Provide the resulting file paths.</pre></section><section><h2>版本 B · 保留我的写作风格</h2><button data-copy="zh-custom" data-spec="spec-zh">复制完整指令 / Copy</button><h3>中文</h3><pre id="zh-custom">请整理并交付我的微信公众号文章和图片，遵循我提供的原稿、写作指令或风格参考，不另设写作风格要求，也不改写已定稿内容。
+
+原稿、素材或我的写作要求：[粘贴 / 附件]
+
+主题或原稿：[填写主题 / 附上原稿]
+保存目录：[填写本机绝对路径]
+
+交付：在保存目录下新建以文章标题命名的文件夹。正文保存为 article.md，图片放在 images/，依次命名 01-简短描述.png、02-简短描述.jpg，保留实际图片格式。图文对应位置写在原稿中，并推荐一张封面。保留原稿、图片及可导入插件的 article-package.json，最后给出文件路径。</pre><button data-copy="en-custom" data-spec="spec-en">复制完整指令 / Copy</button><h3>English</h3><pre id="en-custom">Package my WeChat article and images using my supplied draft, writing instructions or style reference. Do not impose an additional writing style or rewrite approved content.
+
+My draft, assets or writing instructions: [paste / attach]
+
+Topic or draft: [describe / attach]
+Output directory: [absolute local path]
+
+Deliverables: Create a folder named after the article title under the output directory. Save article.md and images/01-short-description.png, images/02-short-description.jpg, preserving actual image formats. Mark image placement in the draft and recommend a cover. Keep the editable article, images and an importable article-package.json. Provide the resulting file paths.</pre></section><details><summary>查看随指令附带的文章包格式</summary><pre id="spec-zh">文章包格式（本条已包含规范，不依赖其他会话或预装 Skill）：
+输出一个 UTF-8 JSON，只含 schemaVersion、articleId、title、summary、source、html、images、coverIndex。
+schemaVersion 为 1；articleId 为 1–100 位字母、数字、横线或下划线，同篇保持稳定；title 为 1–64 字符，summary 最多 120 字符。
+html 为实际 MDnice 导出的正文 HTML，保留内联样式，最多 2 MB。source 为 {&quot;kind&quot;:&quot;mdnice-rendered&quot;,&quot;url&quot;:&quot;实际 https://editor.mdnice.com/ 文章 URL&quot;,&quot;theme&quot;:&quot;实际主题&quot;,&quot;htmlSha256&quot;:&quot;html 原始字符串 UTF-8 SHA-256 小写十六进制值&quot;}。
+images 为按正文 img 顺序排列的 1–50 项 [{&quot;mdniceUrl&quot;:&quot;对应 img src 的公开 HTTPS 地址&quot;}]。可选 wechatUrl 仅可为 qpic.cn HTTPS 地址。coverIndex 为从 0 开始的有效封面图片索引。
+正文只用普通排版标签，不含 script、iframe、svg、事件属性、srcset 或含 URL 的 CSS；不放作者配置、接收微信号或登录凭据。
+必须使用真实 MDnice 导出，不得伪造来源或用自制 HTML 冒充。若当前无法取得导出，先交付 article.md 与图片，明确缺少真实排版 HTML，不能宣称文章包已可导入。</pre><pre id="spec-en">Package format (self-contained; no prior session or installed Skill required):
+Write UTF-8 JSON with only schemaVersion, articleId, title, summary, source, html, images and coverIndex.
+schemaVersion is 1; articleId is a stable 1–100 character identifier using letters, digits, hyphens or underscores; title is 1–64 characters; summary is at most 120 characters.
+html is the actual MDnice body HTML export with inline styles, at most 2 MB. source is {&quot;kind&quot;:&quot;mdnice-rendered&quot;,&quot;url&quot;:&quot;actual https://editor.mdnice.com/ article URL&quot;,&quot;theme&quot;:&quot;actual theme&quot;,&quot;htmlSha256&quot;:&quot;lowercase SHA-256 of the exact UTF-8 html string&quot;}.
+images is an ordered array of 1–50 items [{&quot;mdniceUrl&quot;:&quot;public HTTPS URL matching the corresponding body img src&quot;}]. Optional wechatUrl must use a qpic.cn HTTPS address. coverIndex is a valid zero-based image index.
+Use ordinary formatting tags, no scripts, iframes, SVG, event attributes, srcset or URL-bearing CSS. Exclude author configuration, recipients and credentials.
+Use a real MDnice export. Never fabricate the source or label custom HTML as a MDnice export. If no actual export is available, deliver article.md and images and clearly identify the missing formatted HTML; do not claim the package is importable.</pre></details><script src="agent-prompt.js"></script></body></html>

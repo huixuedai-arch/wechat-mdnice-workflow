@@ -21,7 +21,7 @@
 有实际 MDnice HTML 导出时可用命令生成包：
 
 ```sh
-python3 skills/wechat-mdnice-workflow/scripts/build_package.py \
+python3 skills/wechat-workflow/scripts/build_package.py \
   --html /absolute/article-mdnice.html \
   --source-url 'https://editor.mdnice.com/?outId=YOUR_DOCUMENT_ID' \
   --article-id my-article-001 --title '本篇标题' --summary '本篇摘要' \

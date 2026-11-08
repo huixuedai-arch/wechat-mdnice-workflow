@@ -1,65 +1,44 @@
-# MDnice → 微信公众号草稿与预览
+# 微信公众号文章自动流程 · wechat-workflow
 
-一个可配置 Skill 和 Chrome Manifest V3 插件。**一次安装，作者/原创作者/微信号自己配置，每篇加载新的 MDnice 文章包。正式发表始终由使用者手工完成。**
+可配置 Skill + Chrome 插件，支持 **MDnice 普通文章** 和 **原图纯文本贴图**。一次安装，每篇导入新的文章包；作者、原创作者、预览微信号由使用者在本机配置。正式发表始终由用户完成。
 
-第一次使用请先看 [Skill 与插件完整入门步骤](docs/quickstart.md)。
+- [下载最新插件](https://github.com/huixuedai-arch/wechat-mdnice-workflow/releases/latest)
+- [安装和操作步骤](docs/quickstart.md)
+- [贴图素材、打包与恢复](docs/image-text.md)
+- [普通文章包协议](docs/article-package.md)
+- [wechat-workflow Skill](skills/wechat-workflow/SKILL.md)
 
-## 安装一次
+## 两种流程
 
-1. 从 [Releases](https://github.com/huixuedai-arch/wechat-mdnice-workflow/releases) 下载插件 ZIP，解压到一个固定目录。
-2. Chrome 打开 `chrome://extensions`，开启开发者模式，点击“加载已解压的扩展程序”，选择包含 `manifest.json` 的 `wechat-mdnice-extension` 文件夹。也可以直接加载本仓库 `extension/`。
-3. 打开插件的“本机设置”，填写公众号标识（同一账号始终使用同一个标识）、文章作者、原创作者、预览接收微信号。原创作者留空默认同文章作者。文字原创默认勾选；仅用于符合声明条件的自有原创稿件。
-4. 将插件固定到工具栏。升级时覆盖**同一文件夹**并点扩展卡片上的重新加载，不要移除扩展。移除会丢失本地任务与防重发记录。
+| 类型 | 素材准备 | 保存后 |
+| --- | --- | --- |
+| 文章 | 真实 MDnice 排版 HTML 与图片 | 刷新核对后发送指定微信号预览 |
+| 贴图 | 原始 PNG/JPEG + 标题 + 纯文本正文，无需 MDnice | 刷新核对后预览；只有扫码入口时交付已核验草稿，由用户审核发表 |
 
-权限：`activeTab` 只在使用者点击后访问当前页；`scripting` 运行 DOM 操作；`storage` / `unlimitedStorage` 在本机保存配置、文章包、备份和防重复记录。没有 cookies、debugger、私有接口或全站后台访问权限。
+每篇保存在 `<输出根目录>/<文章标题>/`。素材 Agent 同时交付 JSON 包；修改素材后由它重新打包，保持 articleId，不要求使用者手改 JSON。`运行步骤.txt` 面向插件使用者。
 
-## 每篇文章
+## 使用
 
-1. 在 MDnice 完成文章排版并保存。
-2. 在 MDnice 标签页打开插件，展开“在 MDnice 页面生成文章包”，填标题、摘要、封面图片序号，点击提取。插件读取实际预览的 HTML 和样式，下载 JSON，同时加载本篇。
-3. 如果文章包由写作助手准备，直接选择“加载 MDnice 文章包”。不需要修改插件文件或重新安装。
-4. 在目标公众号打开**空白图文编辑页**，打开插件，核对稿件、账号、作者和收件人，勾选本次操作授权，点击完整流程按钮。
-5. 插件依次导入富文本、等待微信托管图片、从正文选择封面、填写两个作者及原创设置、保存、刷新读回、切换公众号列表预览并向配置微信号发送一次。不会点“一键排版”，不会点“发表”。
-6. `preview-sent` 表示平台显示成功。手机收到后，可点“我已收到本篇预览”记录实际收件；这不发送任何消息。最终发表由你操作。
+下载 ZIP 解压，Chrome 扩展管理页开启开发者模式，加载包含 `manifest.json` 的文件夹（或本仓库 `extension/`）。打开公众号并新建对应类型的空白编辑页 → 从工具栏打开插件 → 本机设置 → 导入包 → 核对图片 → 主按钮执行。文章可选择封面；贴图首图为封面。
 
-两位作者可单独配置。若平台将两者联动锁定而无法实现不同值，插件会停止，提示将两个配置设为相同值，不会假报成功。
+升级覆盖同一目录并重新加载，不卸载。清空文章包保留本机设置、网页草稿、运行历史和防重发记录。诊断运行中也能只读采集，包含私人信息时不要公开提交。
 
-## 其他按钮
+安装 Skill：将 `skills/wechat-workflow/` 复制到宿主技能目录。普通文章打包脚本、贴图打包脚本和参考说明均随 Skill 提供。Skill 不授予网站权限；配置与稿件不提交 Git。
 
-- **继续导入/封面**：只用于同篇在这两个阶段停止的任务，完整正文核对通过则跳过重新粘贴。已有不同正文不会覆盖。
-- **已保存草稿核对后预览**：从草稿箱打开本篇，先核对再发送；不再点击保存。若已有发送记录会拒绝重发。
-- **仅更新作者和原创**：保留当前正文，备份后修改并保存、刷新核对，不发预览。
-- **只读核对**：核对标题、作者及原创单选状态，关闭弹窗，不写值、不保存、不发送。
-- **停止**：停止后续动作，不能撤回已经提交的预览。
-- **诊断**：导出阶段、错误、作者值和 radio/checkbox 的真实 checked；不导出正文、图片 URL、完整 DOM 或登录 token。诊断仍可能含标题、署名、接收人和草稿 ID，不应直接公开提交。
+权限仅为 `activeTab`、`scripting`、`storage`、`unlimitedStorage`。插件操作使用者选定页面的 DOM，不读取 Cookie、不调用私有发布接口。发送前写入防重发记录；`preview-unknown` 禁止自动重发。`draft-ready` 表示草稿已保存核对、待人工审核，不能当作已发送。
 
-任务按公众号标识、文章 ID 和内容版本保存在本机，可跨标签恢复。发送前先落防重发记录；结果不明 (`preview-unknown`) 不自动重试。先查微信，收到后记录确认，不靠重复发送来测试。
+## 验证范围
 
-## 文章包与 Skill
-
-格式见 [文章包协议](docs/article-package.md)。正文须来自实际 MDnice 排版，HTML 哈希校验防止传输损坏；包不能覆盖作者、微信号或声明配置。当前支持 **1–50 张正文图片**，封面从正文选择；图片须是公开 HTTPS URL。微信需成功接管并转为 qpic 托管地址，否则停止，不跳过图片核对。需要登录的图片、外链视频、音频、iframe、SVG 和脚本不属于本版支持范围。
-
-安装 Skill：复制 `skills/wechat-mdnice-workflow` 到你的宿主技能目录。正常使用：“按公众号流程处理这篇文章，先经过 MDnice，保存核对后发预览，发表我自己来。”Skill 不自动授予浏览器权限；被工具限制的网站访问不能绕过。
-
-开发者可生成配置，然后在插件中导入 JSON：
-
-```sh
-python3 skills/wechat-mdnice-workflow/scripts/profile.py --account my_account --author "我的署名" --recipient my_wechat_id --output-root "/absolute/articles" --original enabled
-```
-
-配置默认保存在 `~/.config/wechat-editorial/profile.json`，只存本机，不进仓库。
-
-## 测试与限制
+普通文章流程已有真实预览收件记录。本次贴图实站完成 10 张图片、标题正文导入及保存刷新核验；用户看到二维码，转为草稿人工审核发表，没有确认微信号收件。1.9.5 的二维码结束状态通过本地浏览器测试。未宣称所有账号和未来微信界面均已验证。
 
 ```sh
 npm install
 npm test
 npx playwright install chromium
-npm run test:browser
+npm run test:popup
+npm run test:newspic
+npm run test:feedback
+npm run test:prosemirror
 ```
 
-也可通过 `CHROME_PATH` 指定本机 Chrome 可执行文件。测试只访问本地模拟页面，拦截 HTTPS 外网请求；不会登录、发送真实消息或发表。
-
-已覆盖不同文章、1/3/8 张图片、不同作者/微信号、原创开关、MDnice 样式提取、瞬时保存反馈、真实本地页面刷新、只读/只改设置、正文/原创读回错误、跨标签记录、并发点击与发送去重、恶意 HTML 和文章包字段校验。
-
-**通用版完成本地测试，尚未在多个真实公众号联调。**其前身的单篇流程完成过真实预览收件，但这不等于所有微信界面都已验证。页面结构变化、验证码或平台图片上传失败时会停止并报告。请勿将本地模拟结果视为真实发送成功。
+可用 `CHROME_PATH` 指定本机 Chrome。测试使用隔离本地页面，不登录公众号或发送真实消息。

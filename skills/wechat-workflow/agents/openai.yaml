@@ -1,0 +1,4 @@
+interface:
+  display_name: "微信公众号文章与贴图"
+  short_description: "准备文章或贴图包，保存核对后预览；仅能扫码时交付草稿，由用户审核发表"
+  default_prompt: "使用 $wechat-workflow 处理这篇稿件，素材按文章标题建文件夹，保存核对后预览；若贴图仅能扫码则交付草稿，发表由我完成。"

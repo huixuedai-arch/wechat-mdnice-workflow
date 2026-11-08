@@ -8,3 +8,7 @@ backups/
 node_modules/
 __pycache__/
 .DS_Store
+
+# Private image-post state and generated reviews
+.wechat-image-state/
+*.review.html
