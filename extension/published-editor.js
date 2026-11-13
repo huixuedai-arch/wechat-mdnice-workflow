@@ -8,7 +8,21 @@
  const fingerprint=s=>JSON.stringify([s.id,s.title,s.content,s.images]);
  const labels=['替换','替换图片','更换','更换图片'];
  function replacement(){const roots=[...document.querySelectorAll('.image-selector__edit-bar')].filter(vis);const nodes=roots.flatMap(r=>[...r.querySelectorAll('*')]).filter(e=>vis(e)&&labels.includes(norm(e.textContent)));const leaves=nodes.filter(e=>!nodes.some(x=>x!==e&&e.contains(x)));if(leaves.length!==1)throw Error('当前页面未提供唯一的图片替换入口；未删除原图，请保留页面并下载诊断');return leaves[0];}
- function removalState(){const all=[...document.querySelectorAll('.image-selector__edit-bar a.comm_del')];return {all:all.length,visible:all.filter(vis).length,selected:[...document.querySelectorAll('.image-selector__bottom-list-item')].map((e,i)=>e.classList.contains('current')?i:null).filter(i=>i!==null)};}
+ const selectionTrace=[];
+ function selectedIndices(){return [...document.querySelectorAll('.image-selector__bottom-list-item')].map((e,i)=>e.classList.contains('current')?i:null).filter(i=>i!==null);}
+ async function selectImage(index,check){
+  await check();const rows=[...document.querySelectorAll('.image-selector__bottom-list-item')].filter(vis),row=rows[index];if(!row)throw Error('目标图片缩略图不存在');
+  row.scrollIntoView({block:'nearest',inline:'nearest'});const r=row.getBoundingClientRect(),base={bubbles:true,cancelable:true,composed:true,view:window,clientX:r.left+r.width/2,clientY:r.top+r.height/2,button:0,detail:1};
+  const entry={target:index,before:selectedIndices(),events:[]};selectionTrace.push(entry);if(selectionTrace.length>20)selectionTrace.shift();
+  // A draggable thumbnail may select on mouse/pointer down/up, not HTMLElement.click().
+  for(const type of ['pointerover','mouseover','pointerdown','mousedown','pointerup','mouseup','click']){
+   const options={...base,buttons:/down$/.test(type)?1:0};
+   const event=type.startsWith('pointer')?new PointerEvent(type,{...options,pointerId:1,pointerType:'mouse',isPrimary:true}):new MouseEvent(type,options);
+   row.dispatchEvent(event);entry.events.push(type);
+  }
+  await pause();entry.after=selectedIndices();
+ }
+ function removalState(){const all=[...document.querySelectorAll('.image-selector__edit-bar a.comm_del')];return {selectionTrace,all:all.length,visible:all.filter(vis).length,selected:[...document.querySelectorAll('.image-selector__bottom-list-item')].map((e,i)=>e.classList.contains('current')?i:null).filter(i=>i!==null)};}
  async function removeControl(check,target){
   const end=Date.now()+12000;let stable=0;
   while(Date.now()<end){await check();
@@ -34,7 +48,7 @@
   let urls=[...s.images];
   if(changes.length&&approved.strategy==='rebuild'){urls=await rebuild(article,approved,hooks);}
   else for(const i of changes){
-   await hooks.check();const rows=[...document.querySelectorAll('.image-selector__bottom-list-item')].filter(vis);if(rows.length!==urls.length)throw Error('图片列表发生变化');rows[i].click();await pause();
+   await hooks.check();const rows=[...document.querySelectorAll('.image-selector__bottom-list-item')].filter(vis);if(rows.length!==urls.length)throw Error('图片列表发生变化');await selectImage(i,hooks.check);
    const btn=replacement(),before=new Set(document.querySelectorAll('input[type=file]'));btn.click();await pause();
    const end=Date.now()+5000;let input;
    while(Date.now()<end){
@@ -54,7 +68,7 @@
  async function rebuild(article,approved,hooks){
   const r=approved.rebuild?structuredClone(approved.rebuild):{oldUrls:[...approved.snapshot.images],newUrls:[],removed:0};
   const check=async()=>{await hooks.check();if(!same(A.images(),expected(r)))throw Error('图片列表与记录不符，未继续');if(A.value(A.title())!==approved.snapshot.title||A.text(A.body())!==approved.snapshot.content)throw Error('运行期间文字发生变化，未继续');};
-  await check();if(r.removed<r.oldUrls.length){const first=[...document.querySelectorAll('.image-selector__bottom-list-item')].filter(vis)[0];first.click();await removeControl(check,expected(r)[0]);}if(r.newUrls.length<article.images.length){A.input();if(r.oldUrls.length-r.removed+article.images.length>20)throw Error('无法在保留原图时上传整组新图：临时图片数超过 20，未改动原图');}
+  await check();if(r.removed<r.oldUrls.length){await selectImage(0,check);await removeControl(check,expected(r)[0]);}if(r.newUrls.length<article.images.length){A.input();if(r.oldUrls.length-r.removed+article.images.length>20)throw Error('无法在保留原图时上传整组新图：临时图片数超过 20，未改动原图');}
   await hooks.checkpoint(r,'先上传并核对新图，原图暂时保留');
   for(let i=r.newUrls.length;i<article.images.length;i++){
    await check();const before=expected(r);A.upload(article.images[i]);const end=Date.now()+60000;let done=false;
@@ -63,7 +77,7 @@
   }
   while(r.removed<r.oldUrls.length){
    await check();if(r.newUrls.length!==article.images.length)throw Error('新图未全部核对，不能移除旧图');
-   const before=expected(r),rows=[...document.querySelectorAll('.image-selector__bottom-list-item')].filter(vis);if(rows.length!==before.length)throw Error('图片缩略图数量不符');rows[0].click();const del=await removeControl(check,before[0]);await check();del.click();
+   const before=expected(r),rows=[...document.querySelectorAll('.image-selector__bottom-list-item')].filter(vis);if(rows.length!==before.length)throw Error('图片缩略图数量不符');await selectImage(0,check);const del=await removeControl(check,before[0]);await check();del.click();
    const end=Date.now()+10000;let done=false,confirmed=false;
    while(Date.now()<end){await hooks.check();const next=A.images();if(same(next,before.slice(1))){done=true;break;}if(!same(next,before))throw Error('移除旧图后顺序异常，未提交');
     const containers=[...document.querySelectorAll('[role=dialog],.weui-desktop-dialog,.weui-desktop-popover')].filter(e=>vis(e)&&/删除/.test(e.textContent)&&/图片/.test(e.textContent));const dialogs=containers.filter(e=>!containers.some(x=>x!==e&&e.contains(x)));
