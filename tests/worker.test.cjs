@@ -1,6 +1,6 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),{webcrypto}=require('node:crypto');
-const root=require('node:path').join(__dirname,'../extension/');const store={};let listener;const injected=[];let mockSnapshot;let currentTab=1;const tabs=new Map([[1,{url:'https://mp.weixin.qq.com/editor'}],[2,{url:'https://mp.weixin.qq.com/editor'}]]);
-const chrome={storage:{local:{get:async k=>k===null?structuredClone(store):Object.fromEntries((Array.isArray(k)?k:[k]).map(key=>[key,structuredClone(store[key])])),getKeys:async()=>Object.keys(store),set:async data=>Object.assign(store,structuredClone(data)),remove:async key=>{delete store[key]}}},scripting:{executeScript:async x=>{injected.push(x);return x.func&&String(x.func).includes('a.assertEditor()')?[{result:structuredClone(mockSnapshot)}]:[]}},runtime:{onMessage:{addListener:f=>listener=f},getManifest:()=>({version:'1.0.0'})},tabs:{get:async id=>tabs.get(id),reload:async()=>{},onUpdated:{addListener(){}}}};
+const root=require('node:path').join(__dirname,'../extension/');const store={};let listener;const injected=[];let mockSnapshot;let mockPublished;let currentTab=1;const tabs=new Map([[1,{url:'https://mp.weixin.qq.com/editor'}],[2,{url:'https://mp.weixin.qq.com/editor'}]]);
+const chrome={storage:{local:{get:async k=>k===null?structuredClone(store):Object.fromEntries((Array.isArray(k)?k:[k]).map(key=>[key,structuredClone(store[key])])),getKeys:async()=>Object.keys(store),set:async data=>Object.assign(store,structuredClone(data)),remove:async key=>{delete store[key]}}},scripting:{executeScript:async x=>{injected.push(x);return x.func&&String(x.func).includes('PublishedEditor.plan')?[{result:structuredClone(mockPublished)}]:x.func&&String(x.func).includes('a.assertEditor()')?[{result:structuredClone(mockSnapshot)}]:[]}},runtime:{onMessage:{addListener:f=>listener=f},getManifest:()=>({version:'1.0.0'})},tabs:{get:async id=>tabs.get(id),reload:async()=>{},onUpdated:{addListener(){}}}};
 const ctx=vm.createContext({chrome,URL,atob,crypto:webcrypto,TextEncoder,Date,structuredClone,console,setTimeout});ctx.importScripts=f=>vm.runInContext(fs.readFileSync(root+f,'utf8'),ctx);vm.runInContext(fs.readFileSync(root+'worker.js','utf8'),ctx);
 const call=(type,extra={},fromPage=false)=>new Promise(resolve=>listener({type,tabId:currentTab,...extra},fromPage?{tab:{id:currentTab},url:tabs.get(currentTab).url}:{},resolve));
 (async()=>{
@@ -123,6 +123,15 @@ const call=(type,extra={},fromPage=false)=>new Promise(resolve=>listener({type,t
  await call('update',{patch:{stage:'verified'}},true);assert(!(await call('update',{patch:{stage:'draft-ready'}},true)).error);assert.equal((await call('status')).stage,'draft-ready');assert.equal(store[await ctx.EditorialCore.guardKey(resumed.profile,resumed.article)],undefined,'QR fallback does not record a send');
  await call('update',{patch:{stage:'verified'}},true);assert(!(await call('update',{patch:{stage:'preview-pending'}},true)).error);await call('update',{patch:{stage:'preview-sent'}},true);
  assert((await call('photo-plan')).error,'saved archive still uses the article-wide send guard');
+ // Published edits are explicit, independent of old send guards and never send.
+ mockPublished={snapshot:{id:'saved-archive',title:'Old public title',content:'Old public body',images:['https://mmbiz.qpic.cn/mmbiz_png/saved/640']},fingerprint:'approved-state',titleChanged:true,bodyChanged:true};
+ const plan=await call('published-plan');assert(!plan.error,plan.error);assert.deepEqual(plan.changes,[0]);
+ assert((await call('published-start',{consent:true,expectedHash:'stale'})).error);
+ assert(!(await call('published-start',{consent:true,expectedHash:loaded.hash})).error);
+ const publication=await call('load',{},true);assert.equal(publication.mode,'published');assert.equal(publication.backup.title,'Old public title');
+ await call('update',{patch:{stage:'verified'}},true);assert((await call('update',{patch:{stage:'preview-pending'}},true)).error,'published edit can never send previews');assert((await call('reload',{},true)).error,'published edit cannot reload or submit');
+ await call('update',{patch:{stage:'published-ready'}},true);assert.equal((await call('status')).stage,'published-ready');
+ console.log('PASS explicit published edit plan, backup, package version lock, no preview or reload');
  console.log('PASS archived saved draft status, readback-only resume, preserved parallel record and send guard');
  console.log('PASS live blank-page routing with existing history, archived progress, return-to-old-page revision, changed-page protection and send guard');
  console.log('PASS same-article revision, version lock, retained old record, image identity restriction, no resend bypass');
