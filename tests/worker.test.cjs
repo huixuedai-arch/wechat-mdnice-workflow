@@ -126,6 +126,7 @@ const call=(type,extra={},fromPage=false)=>new Promise(resolve=>listener({type,t
  // Published edits are explicit, independent of old send guards and never send.
  mockPublished={snapshot:{id:'saved-archive',title:'Old public title',content:'Old public body',images:['https://mmbiz.qpic.cn/mmbiz_png/saved/640']},fingerprint:'approved-state',titleChanged:true,bodyChanged:true};
  const plan=await call('published-plan');assert(!plan.error,plan.error);assert.deepEqual(plan.changes,[0]);
+ store['failed-published-proof']={...structuredClone(savedRecord),mode:'published',stage:'blocked',article:{...loaded,title:mockPublished.snapshot.title,content:mockPublished.snapshot.content},draftId:mockPublished.snapshot.id,imageUrls:mockPublished.snapshot.images};assert.equal((await call('published-plan')).imageProof,false,'failed new package must never certify old page images');
  assert((await call('published-start',{consent:true,expectedHash:'stale'})).error);
  assert(!(await call('published-start',{consent:true,expectedHash:loaded.hash})).error);
  const publication=await call('load',{},true);assert.equal(publication.mode,'published');assert.equal(publication.backup.title,'Old public title');

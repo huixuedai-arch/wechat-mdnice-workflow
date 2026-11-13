@@ -1,6 +1,6 @@
 {
   "name": "wechat-mdnice-workflow",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "private": true,
   "scripts": {
     "test": "node tests/core.test.cjs && node tests/worker.test.cjs",
@@ -10,7 +10,8 @@
     "test:diagnostic": "node tests/diagnostic.test.cjs",
     "test:prosemirror": "node tests/prosemirror.test.cjs",
     "test:feedback": "node tests/feedback.test.cjs",
-    "test:published": "node tests/published.test.cjs"
+    "test:published": "node tests/published.test.cjs",
+    "test:published-rebuild": "node tests/published-rebuild.test.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1",

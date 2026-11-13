@@ -59,6 +59,7 @@ $('published-mode').onchange=()=>{selectMode(selectedMode);$('published-diff').r
 async function publishedPlan(){
  const plan=await call('published-plan'),root=$('published-diff');root.replaceChildren();
  for(const [label,before,after] of [['标题',plan.snapshot.title,plan.newTitle],['正文',plan.snapshot.content,plan.newContent]]){const p=document.createElement('p');p.textContent=label+(before===after?'：不变':'：'+before+' → '+after);root.append(p);}
+ if(plan.strategy==='rebuild'&&plan.changes.length){const method=document.createElement('p');method.textContent=plan.rebuild?'继续中断的上传/旧图移除步骤，不重复上传已核对的新图。':'页面没有替换按钮：先上传并核对整组新图，再移除旧图。不会提交修改。';root.append(method);}
  const note=document.createElement('p');note.textContent=plan.imageProof?'将替换第 '+(plan.changes.map(i=>i+1).join('、')||'无')+' 张图片':'未找到旧包的图片校验记录。请逐张核对下方旧图和新图；本次将替换全部图片。';root.append(note);
  for(const i of plan.changes){const line=document.createElement('div'),label=document.createElement('p');label.textContent='第 '+(i+1)+' 张：旧图 → 新图';line.append(label);for(const src of [plan.snapshot.images[i],currentArticle.images[i].dataUrl]){const img=document.createElement('img');img.src=src;img.referrerPolicy='no-referrer';img.style.cssText='width:45%;max-height:180px;object-fit:contain';line.append(img);}root.append(line);}
  $('published-apply').hidden=false;message('请核对差异；仅填入网页，不保存、不预览、不提交修改。');

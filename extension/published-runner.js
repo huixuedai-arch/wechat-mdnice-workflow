@@ -4,6 +4,7 @@
  const update=(stage,note,extra={})=>msg('update',{patch:{stage,...extra},note});
  try{const r=await msg('load');if(r.mode!=='published')throw Error('非已发表修改任务');
  const urls=await PublishedEditor.stage(r.article,r.approved,r.approved.changes,{
+ checkpoint:async(state,note)=>update('published-edit',note,{rebuildState:state,imageUrls:[...state.oldUrls.slice(state.removed),...state.newUrls]}),
  check:async()=>{if((await msg('run-state')).stop)throw Error('任务已停止，未提交');},
  progress:async(i,urls)=>update('published-edit','准备替换第 '+(i+1)+' 张图片',{imageUrls:urls,pendingImage:i}),
  done:async(i,urls)=>update('published-edit','已填入第 '+(i+1)+' 张新图片',{imageUrls:urls,pendingImage:null})});

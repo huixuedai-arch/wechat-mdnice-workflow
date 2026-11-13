@@ -9,7 +9,7 @@ const origin=t=>{if(new URL(t.url).origin!=='https://mp.weixin.qq.com')throw Err
 const terminal=new Set(['published-ready','draft-ready','blocked','preview-unknown','preview-sent','metadata-saved','checked','stopped']);
 async function recordFor(tabId){const k=await read('tab:'+tabId);return k?await read(k):null;}
 const redact=s=>String(s||'').replace(/https?:\/\/[^\s<>"']+/g,'[URL omitted]').replace(/(?:token|access_token|cookie)\s*[=:]\s*[^\s,;]+/gi,'[credential omitted]');
-function publicRecord(r){if(!r)return {stage:'尚未运行'};return {runId:r.runId,articleId:r.article.articleId,title:r.article.title,stage:r.stage,blockedAt:r.blockedAt,draftId:r.draftId,author:r.profile.author,originalAuthor:r.profile.originalAuthor,recipient:r.profile.recipient,original:r.profile.original,error:r.error?redact(r.error):undefined,events:r.events.map(e=>({...e,note:redact(e.note)})),metadataVerified:r.metadataVerified,stop:r.stop,backupAvailable:!!r.backup,type:r.article.type||'news',imageCount:r.article.images.length,details:r.article.type==='newspic'?r.details:undefined};}
+function publicRecord(r){if(!r)return {stage:'尚未运行'};return {runId:r.runId,articleId:r.article.articleId,title:r.article.title,stage:r.stage,blockedAt:r.blockedAt,draftId:r.draftId,author:r.profile.author,originalAuthor:r.profile.originalAuthor,recipient:r.profile.recipient,original:r.profile.original,error:r.error?redact(r.error):undefined,events:r.events.map(e=>({...e,note:redact(e.note)})),metadataVerified:r.metadataVerified,stop:r.stop,backupAvailable:!!r.backup,type:r.article.type||'news',imageCount:r.article.images.length,rebuildProgress:r.rebuildState?{uploaded:r.rebuildState.newUrls.length,removed:r.rebuildState.removed,original:r.rebuildState.oldUrls.length}:undefined,details:r.article.type==='newspic'?r.details:undefined};}
 async function launch(tabId){const active=await recordFor(tabId);chrome.scripting.executeScript({target:{tabId},files:active?.mode==='published'?['newspic-adapter.js','published-editor.js','published-runner.js']:active?.article.type==='newspic'?['newspic-adapter.js','feedback.js','newspic-runner.js']:['preflight.js','editor-adapter.js','runner.js']}).catch(e=>serial(async()=>{const r=await recordFor(tabId);if(!r||terminal.has(r.stage))return;r.blockedAt=r.stage;r.stage='blocked';r.error='脚本未能启动，请重新点击插件授予当前页访问：'+e.message;await write(r.runId,r);}));}
 const photoWrites=r=>!!(r?.mutationStarted||r?.uploadResume||r?.uploadedImages?.length||r?.events?.some(e=>e.stage==='uploading'));
 const canResumePhoto=r=>!!(r&&r.stage==='blocked'&&['import','uploading','text'].includes(r.blockedAt)&&(!photoWrites(r)||r.uploadResume||r.uploadedImages?.length||r.events?.some(e=>e.stage==='uploading')));
@@ -52,18 +52,18 @@ async function publishedAction(m,id){
  if(m.type==='published-plan'){
   const bound=await recordFor(id);if(bound&&!terminal.has(bound.stage))throw Error('当前页有正在运行的任务，请先停止');
   await chrome.scripting.executeScript({target:{tabId:id},files:['newspic-adapter.js','published-editor.js']});
-  const result=await chrome.scripting.executeScript({target:{tabId:id},func:async article=>{try{return await PublishedEditor.plan(article);}catch(e){return {error:e.message};}},args:[{title:a.title,content:a.content,images:a.images.map(x=>({sha256:x.sha256}))}]});
+  const result=await chrome.scripting.executeScript({target:{tabId:id},func:async (article,resume)=>{try{return await PublishedEditor.plan(article,resume);}catch(e){return {error:e.message};}},args:[{title:a.title,content:a.content,images:a.images.map(x=>({sha256:x.sha256}))},bound?.mode==='published'&&bound.article.hash===a.hash&&bound.stage==='blocked'?bound.rebuildState:null]});
   const plan=result[0]?.result;if(!plan||plan.error)throw Error(plan?.error||'无法读取已发表修改页');
   const all=await chrome.storage.local.get(null);
-  const originals=Object.values(all).filter(r=>r?.article?.type==='newspic'&&r.profile?.accountKey===p.accountKey&&r.draftId===plan.snapshot.id&&r.article.title===plan.snapshot.title&&r.article.content===plan.snapshot.content&&r.imageUrls?.length===plan.snapshot.images.length&&r.imageUrls.every((u,i)=>photoIdentity(u)===photoIdentity(plan.snapshot.images[i])));
+  const originals=Object.values(all).filter(r=>r?.article?.type==='newspic'&&(r.mode!=='published'||r.stage==='published-ready')&&r.profile?.accountKey===p.accountKey&&r.draftId===plan.snapshot.id&&r.article.title===plan.snapshot.title&&r.article.content===plan.snapshot.content&&r.imageUrls?.length===plan.snapshot.images.length&&r.imageUrls.every((u,i)=>photoIdentity(u)===photoIdentity(plan.snapshot.images[i])));
   const signatures=new Map(originals.map(r=>[r.article.images.map(x=>x.sha256).join(','),r]));
   const original=signatures.size===1?[...signatures.values()][0]:null;
-  plan.changes=a.images.map((im,i)=>i).filter(i=>!original||original.article.images[i]?.sha256!==a.images[i].sha256);plan.imageProof=!!original;
+  plan.changes=a.images.map((im,i)=>i).filter(i=>!original||original.article.images[i]?.sha256!==a.images[i].sha256);plan.imageProof=!!original;if(plan.rebuild)plan.changes=a.images.map((_,i)=>i);
   await write('published-plan:'+id,{...plan,hash:a.hash,account:p.accountKey});return {...plan,newTitle:a.title,newContent:a.content};
  }
  const approved=await read('published-plan:'+id);if(!m.consent||!approved||approved.hash!==a.hash||approved.account!==p.accountKey||m.expectedHash!==a.hash)throw Error('请先核对本页的新旧内容');
  const bound=await recordFor(id);if(bound&&!terminal.has(bound.stage))throw Error('当前页已有任务运行');
- const runId='published:'+id+':'+a.hash+':'+Date.now();const r={runId,owner:id,mode:'published',stage:'published-edit',article:a,profile:p,draftId:approved.snapshot.id,stop:false,events:[],approved,backup:approved.snapshot,uploadedImages:approved.snapshot.images,imageUrls:approved.snapshot.images,started:now()};
+ const runId='published:'+id+':'+a.hash+':'+Date.now();const r={runId,owner:id,mode:'published',stage:'published-edit',article:a,profile:p,draftId:approved.snapshot.id,stop:false,events:[],approved,backup:approved.rebuild&&bound?.backup?bound.backup:approved.snapshot,rebuildState:approved.rebuild||null,uploadedImages:approved.snapshot.images,imageUrls:approved.snapshot.images,started:now()};
  await write(runId,r);await write('tab:'+id,runId);launch(id);return publicRecord(r);
 }
 async function handle(m,sender){
@@ -186,7 +186,7 @@ async function handle(m,sender){
  if(m.type==='run-state')return {stage:r.stage,stop:r.stop};
  if(m.type==='update'){
   const patch=m.patch||{};
-  const allowed=['stage','error','details','blockedAt','metadataSnapshot','metadataBefore','metadataVerified','metadataRequired','backup','imageUrls','cover','draftId','mutationStarted','preflight','layoutWarning','uploadedImages','pendingImage'];
+  const allowed=['stage','error','details','blockedAt','metadataSnapshot','metadataBefore','metadataVerified','metadataRequired','backup','imageUrls','cover','draftId','mutationStarted','preflight','layoutWarning','uploadedImages','pendingImage','rebuildState'];
   if(Object.keys(patch).some(k=>!allowed.includes(k)))throw Error('不允许修改任务身份或配置');
   if(r.stop&&patch.stage!=='blocked'&&patch.stage!=='preview-unknown')throw Error('任务已停止');
   if(patch.stage==='draft-ready'&&(r.stage!=='verified'||!r.draftId||!r.imageUrls?.length))throw Error('尚未核对已保存草稿，不能标记完成');
