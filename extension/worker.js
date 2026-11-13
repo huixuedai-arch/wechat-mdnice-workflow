@@ -52,7 +52,7 @@ async function publishedAction(m,id){
  if(m.type==='published-plan'){
   const bound=await recordFor(id);if(bound&&!terminal.has(bound.stage))throw Error('当前页有正在运行的任务，请先停止');
   await chrome.scripting.executeScript({target:{tabId:id},files:['newspic-adapter.js','published-editor.js']});
-  const result=await chrome.scripting.executeScript({target:{tabId:id},func:async (article,resume)=>{try{return await PublishedEditor.plan(article,resume);}catch(e){return {error:e.message};}},args:[{title:a.title,content:a.content,images:a.images.map(x=>({sha256:x.sha256}))},bound?.mode==='published'&&bound.article.hash===a.hash&&bound.stage==='blocked'?bound.rebuildState:null]});
+  const result=await chrome.scripting.executeScript({target:{tabId:id},func:async (article,resume)=>{try{return await PublishedEditor.plan(article,resume);}catch(e){return {error:e.message};}},args:[{title:a.title,content:a.content,images:a.images.map(x=>({sha256:x.sha256}))},bound?.mode==='published'&&bound.article.hash===a.hash&&bound.stage==='blocked'?(bound.rebuildState??null):null]});
   const plan=result[0]?.result;if(!plan||plan.error)throw Error(plan?.error||'无法读取已发表修改页');
   const all=await chrome.storage.local.get(null);
   const originals=Object.values(all).filter(r=>r?.article?.type==='newspic'&&(r.mode!=='published'||r.stage==='published-ready')&&r.profile?.accountKey===p.accountKey&&r.draftId===plan.snapshot.id&&r.article.title===plan.snapshot.title&&r.article.content===plan.snapshot.content&&r.imageUrls?.length===plan.snapshot.images.length&&r.imageUrls.every((u,i)=>photoIdentity(u)===photoIdentity(plan.snapshot.images[i])));
