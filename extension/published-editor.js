@@ -8,7 +8,20 @@
  const fingerprint=s=>JSON.stringify([s.id,s.title,s.content,s.images]);
  const labels=['替换','替换图片','更换','更换图片'];
  function replacement(){const roots=[...document.querySelectorAll('.image-selector__edit-bar')].filter(vis);const nodes=roots.flatMap(r=>[...r.querySelectorAll('*')]).filter(e=>vis(e)&&labels.includes(norm(e.textContent)));const leaves=nodes.filter(e=>!nodes.some(x=>x!==e&&e.contains(x)));if(leaves.length!==1)throw Error('当前页面未提供唯一的图片替换入口；未删除原图，请保留页面并下载诊断');return leaves[0];}
- function removeControl(){const es=[...document.querySelectorAll('.image-selector__edit-bar a.comm_del')].filter(vis);if(es.length!==1)throw Error('图片删除入口不唯一，未改动原图');return es[0];}
+ function removalState(){const all=[...document.querySelectorAll('.image-selector__edit-bar a.comm_del')];return {all:all.length,visible:all.filter(vis).length,selected:[...document.querySelectorAll('.image-selector__bottom-list-item')].map((e,i)=>e.classList.contains('current')?i:null).filter(i=>i!==null)};}
+ async function removeControl(check,target){
+  const end=Date.now()+12000;let stable=0;
+  while(Date.now()<end){await check();
+   const rows=[...document.querySelectorAll('.image-selector__bottom-list-item')].filter(vis),selected=rows.filter(e=>e.classList.contains('current'));
+   const previews=[...document.querySelectorAll('.image-selector__preview-center-img img')].filter(vis);
+   const selectionOK=!target||((!selected.length||selected.length===1&&selected[0]===rows[0])&&(!previews.length||previews.length===1&&A.identity(previews[0].currentSrc||previews[0].src)===A.identity(target)));
+   const es=[...document.querySelectorAll('.image-selector__edit-bar a.comm_del')].filter(e=>vis(e)&&!e.classList.contains('disabled')&&e.getAttribute('aria-disabled')!=='true');
+   if(es.length===1&&selectionOK){if(++stable>=3)return es[0];}else stable=0;
+   await pause();
+  }
+  throw Error('等待图片选中及删除工具栏就绪超时（'+JSON.stringify(removalState())+'）；未继续删除');
+ }
+
  const same=(a,b)=>a.length===b.length&&a.every((u,i)=>A.identity(u)===A.identity(b[i]));
  function expected(r){return [...r.oldUrls.slice(r.removed),...r.newUrls];}
  async function plan(article,resume){const s=snapshot();if(!s.title||!s.images.length)throw Error('此入口只用于已有贴图内容，不用于空白新稿');if(resume&&!same(s.images,expected(resume)))throw Error('当前图片与中断记录不符，未重复上传');if(!resume&&s.images.length!==article.images.length)throw Error('已发表修改暂不增删图片，请保持图片数量和顺序');
@@ -41,7 +54,7 @@
  async function rebuild(article,approved,hooks){
   const r=approved.rebuild?structuredClone(approved.rebuild):{oldUrls:[...approved.snapshot.images],newUrls:[],removed:0};
   const check=async()=>{await hooks.check();if(!same(A.images(),expected(r)))throw Error('图片列表与记录不符，未继续');if(A.value(A.title())!==approved.snapshot.title||A.text(A.body())!==approved.snapshot.content)throw Error('运行期间文字发生变化，未继续');};
-  await check();removeControl();if(r.newUrls.length<article.images.length){A.input();if(r.oldUrls.length-r.removed+article.images.length>20)throw Error('无法在保留原图时上传整组新图：临时图片数超过 20，未改动原图');}
+  await check();if(r.removed<r.oldUrls.length){const first=[...document.querySelectorAll('.image-selector__bottom-list-item')].filter(vis)[0];first.click();await removeControl(check,expected(r)[0]);}if(r.newUrls.length<article.images.length){A.input();if(r.oldUrls.length-r.removed+article.images.length>20)throw Error('无法在保留原图时上传整组新图：临时图片数超过 20，未改动原图');}
   await hooks.checkpoint(r,'先上传并核对新图，原图暂时保留');
   for(let i=r.newUrls.length;i<article.images.length;i++){
    await check();const before=expected(r);A.upload(article.images[i]);const end=Date.now()+60000;let done=false;
@@ -50,10 +63,10 @@
   }
   while(r.removed<r.oldUrls.length){
    await check();if(r.newUrls.length!==article.images.length)throw Error('新图未全部核对，不能移除旧图');
-   const before=expected(r),rows=[...document.querySelectorAll('.image-selector__bottom-list-item')].filter(vis);if(rows.length!==before.length)throw Error('图片缩略图数量不符');rows[0].click();await pause();removeControl().click();
+   const before=expected(r),rows=[...document.querySelectorAll('.image-selector__bottom-list-item')].filter(vis);if(rows.length!==before.length)throw Error('图片缩略图数量不符');rows[0].click();const del=await removeControl(check,before[0]);await check();del.click();
    const end=Date.now()+10000;let done=false,confirmed=false;
    while(Date.now()<end){await hooks.check();const next=A.images();if(same(next,before.slice(1))){done=true;break;}if(!same(next,before))throw Error('移除旧图后顺序异常，未提交');
-    const dialogs=[...document.querySelectorAll('[role=dialog],.weui-desktop-dialog')].filter(e=>vis(e)&&/删除/.test(e.textContent)&&/图片/.test(e.textContent));
+    const containers=[...document.querySelectorAll('[role=dialog],.weui-desktop-dialog,.weui-desktop-popover')].filter(e=>vis(e)&&/删除/.test(e.textContent)&&/图片/.test(e.textContent));const dialogs=containers.filter(e=>!containers.some(x=>x!==e&&e.contains(x)));
     if(!confirmed&&dialogs.length===1){const buttons=[...dialogs[0].querySelectorAll('button,a')].filter(e=>vis(e)&&!e.disabled&&/^(确定|删除|确定删除)$/.test(e.textContent.trim()));if(buttons.length===1){buttons[0].click();confirmed=true;}}
     await pause();
    }
@@ -61,5 +74,5 @@
   }
   await check();return r.newUrls;
  }
- globalThis.PublishedEditor={plan,stage,snapshot,fingerprint};
+ globalThis.PublishedEditor={plan,stage,snapshot,fingerprint,removalState};
 })();

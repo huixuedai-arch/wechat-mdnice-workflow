@@ -9,6 +9,6 @@
  progress:async(i,urls)=>update('published-edit','准备替换第 '+(i+1)+' 张图片',{imageUrls:urls,pendingImage:i}),
  done:async(i,urls)=>update('published-edit','已填入第 '+(i+1)+' 张新图片',{imageUrls:urls,pendingImage:null})});
  await update('published-ready','修改内容已填入并核对；请在网页审核后手动提交修改',{imageUrls:urls,error:null});
- }catch(e){await update('blocked',e.message,{blockedAt:'published-edit',error:e.message,details:{editor:NewspicEditor.audit(),controls:[...document.querySelectorAll('.image-selector__edit-bar *')].filter(NewspicEditor.visible).map(e=>({tag:e.tagName,className:String(e.className),text:e.textContent.slice(0,80)}))}}).catch(()=>{});}
+ }catch(e){await update('blocked',e.message,{blockedAt:'published-edit',error:e.message,details:{removal:PublishedEditor.removalState(),editor:NewspicEditor.audit(),controls:[...document.querySelectorAll('.image-selector__edit-bar *')].filter(NewspicEditor.visible).map(e=>({tag:e.tagName,className:String(e.className),text:e.textContent.slice(0,80)}))}}).catch(()=>{});}
  finally{globalThis.__publishedRunning=false;}
 })();
