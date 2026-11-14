@@ -52,6 +52,12 @@ const call=(type,extra={},fromPage=false)=>new Promise(resolve=>listener({type,t
  assert(!(await call('start',{mode:'continue',consent:true})).error,'known progress survives preflight failure');
  legacy=await call('load',{},true);assert.equal(legacy.uploadResume,true);assert.equal(legacy.uploadedImages.length,1);
  await call('update',{patch:{stage:'blocked',blockedAt:'text'},note:'正文核验停止'},true);
+ await call('update',{patch:{stage:'blocked',blockedAt:'saving',details:{saveFeedback:[{text:'参数错误，请注意备份内容后重试'}]}}},true);
+ assert(!(await call('start',{mode:'continue',consent:true})).error,'explicit rejected save may resume retained uploads');
+ await call('update',{patch:{stage:'blocked',blockedAt:'saving',details:{saveFeedback:[]}}},true);
+ assert((await call('start',{mode:'continue',consent:true})).error,'unknown save result must not be retried');
+ await call('update',{patch:{stage:'blocked',blockedAt:'text'}},true);
+
  assert(!(await call('start',{mode:'continue',consent:true})).error,'text-stage resume is permitted without losing images');
  assert.equal((await call('load',{},true)).uploadedImages.length,1);
  await call('update',{patch:{stage:'blocked',blockedAt:'text'}},true);

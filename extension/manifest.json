@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "微信公众号-文章 自动发布流程",
-  "version": "1.10.4",
+  "version": "1.11.0",
   "description": "支持 MDnice 文章包与纯文本贴图包，保存核对后发送一次微信预览；正式发表由用户完成。",
   "permissions": [
     "activeTab",

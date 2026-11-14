@@ -81,7 +81,7 @@
  }
  function audit(){
   const read=fn=>{try{return fn();}catch(e){return {error:e.message};}};
-  return {at:new Date().toISOString(),imageCount:read(()=>images().length),thumbnailCount:document.querySelectorAll('.image-selector__bottom-list-item').length,
+  return {saveResponses:read(()=>JSON.parse(document.documentElement.getAttribute('data-wechat-save-diagnostic')||'[]')),at:new Date().toISOString(),imageCount:read(()=>images().length),thumbnailCount:document.querySelectorAll('.image-selector__bottom-list-item').length,
    uploadEntries:[...document.querySelectorAll('.image-selector__add,.image-selector__bottom-add')].map(e=>({className:e.className,visible:visible(e),fileInputs:e.querySelectorAll('input[type=file]').length})),
    selectedUpload:read(()=>{const e=input();return {entry:e.closest('.image-selector__add,.image-selector__bottom-add')?.className||'legacy',fileCount:e.files.length};}),
    titleChars:read(()=>value(title()).length),bodyChars:read(()=>text(body()).length),

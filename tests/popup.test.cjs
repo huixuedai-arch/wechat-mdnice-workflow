@@ -4,7 +4,7 @@ const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),ass
  const server=http.createServer((req,res)=>{const name=req.url==='/'?'popup.html':req.url.slice(1);if(!/^[a-z.-]+$/.test(name)){res.statusCode=404;return res.end();}res.setHeader('Content-Type',name.endsWith('.js')?'application/javascript':name.endsWith('.css')?'text/css':'text/html');res.end(fs.readFileSync(path.join(ext,name)));});await new Promise(r=>server.listen(0,'127.0.0.1',r));
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH});try{
  const page=await browser.newPage();await page.route('https://**',r=>r.abort());
- await page.addInitScript(()=>{window.state={profile:{accountKey:'test',author:'Writer',originalAuthor:'Writer',recipient:'reader',original:true},article:null};window.calls=[];window.chrome={tabs:{query:async()=>[{id:1,url:'https://mp.weixin.qq.com/'}]},runtime:{sendMessage:async m=>{calls.push(m);if(m.type==='clear-package'){state.article=null;return {};}if(m.type==='get-settings')return state;if(m.type==='package'){if(window.holdImport)await new Promise(r=>window.finishImport=r);state.article=await EditorialCore.article(m.article);return {};}if(m.type==='photo-plan')return {mode:window.stage==='revision-ready'?'revise':window.stage==='blocked'?'continue':'fresh'};if(m.type==='photo-recovery')return window.recovery||{needed:false};if(m.type==='status')return {stage:window.stage||'尚未运行',error:window.previousError,blockedAt:window.blockedAt};return {};}}};});
+ await page.addInitScript(()=>{window.state={profile:{accountKey:'test',author:'Writer',originalAuthor:'Writer',recipient:'reader',original:true},article:null};window.calls=[];window.chrome={tabs:{query:async()=>[{id:1,url:'https://mp.weixin.qq.com/'}]},runtime:{sendMessage:async m=>{calls.push(m);if(m.type==='clear-package'){state.article=null;return {};}if(m.type==='get-settings')return state;if(m.type==='package'){if(window.holdImport)await new Promise(r=>window.finishImport=r);state.article=await EditorialCore.article(m.article);return {};}if(m.type==='published-plan')return {snapshot:{title:'Old',content:'Old body',images:[]},newTitle:state.article.title,newContent:state.article.content,changes:[],imageProof:true};if(m.type==='photo-plan')return {mode:window.stage==='revision-ready'?'revise':window.stage==='blocked'?'continue':'fresh'};if(m.type==='photo-recovery')return window.recovery||{needed:false};if(m.type==='status')return {stage:window.stage||'尚未运行',error:window.previousError,blockedAt:window.blockedAt};return {};}}};});
  await page.goto('http://127.0.0.1:'+server.address().port);
  assert.equal(await page.locator('#run').isDisabled(),true);
  const pkg=JSON.parse(fs.readFileSync(path.join(__dirname,'../examples/article-package.json'),'utf8'));
@@ -49,6 +49,18 @@ const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),ass
  await page.evaluate(()=>{window.holdImport=false;window.stage='revision-ready';window.finishImport();});await page.waitForFunction(()=>document.querySelector('#article-info').textContent.includes('Updated package title'));
  await page.locator('#run').click();await page.waitForFunction(()=>calls.filter(m=>m.type==='start').length===5);
  assert.equal(await page.evaluate(()=>calls.filter(m=>m.type==='start').at(-1).mode),'auto');assert.equal(await page.evaluate(()=>calls.filter(m=>m.type==='start').at(-1).expectedHash),await page.evaluate(()=>state.article.hash));
+ assert.equal(await page.locator('#published-mode').count(),0);assert.equal(await page.locator('#published-apply').count(),0);
+ await page.locator('#operation-published').click();assert.equal(await page.locator('#run').textContent(),'查看新旧内容差异');
+ await page.locator('#run').click();await page.waitForFunction(()=>document.querySelector('#run').textContent==='确认差异并填入修改');
+ assert.equal(await page.evaluate(()=>calls.filter(m=>m.type==='published-start').length),0);
+ await page.screenshot({path:'/private/tmp/wechat-popup-1110.png',fullPage:true});
+ await page.locator('#run').click();assert.equal(await page.evaluate(()=>calls.filter(m=>m.type==='published-start').length),1);
+ await page.locator('#operation-draft').click();assert.equal(await page.locator('#run').textContent(),'保存草稿并预览');assert(await page.locator('#published-diff').isHidden());
+ await page.addScriptTag({content:fs.readFileSync(path.join(ext,'save-observer.js'),'utf8')});
+ await page.route('**/cgi-bin/operate_appmsg*',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({base_resp:{ret:200002,err_msg:'private detail'},secret:'secret-value'})}));
+ await page.evaluate(async()=>{await fetch('/cgi-bin/operate_appmsg?token=secret-value',{method:'POST',body:new URLSearchParams({title0:'Private title',content0:'Private body',token:'secret-value'})});await new Promise(resolve=>{const x=new XMLHttpRequest();x.open('POST','/cgi-bin/operate_appmsg');x.onloadend=resolve;x.send('content0=Private&token=secret-value');});});
+ await page.waitForFunction(()=>JSON.parse(document.documentElement.getAttribute('data-wechat-save-diagnostic')).every(x=>x.ret===200002));
+ const saveReport=await page.evaluate(()=>document.documentElement.getAttribute('data-wechat-save-diagnostic'));assert.equal(JSON.parse(saveReport).length,2);assert(!/Private|secret-value|private detail/.test(saveReport));
  await page.goto('http://127.0.0.1:'+server.address().port+'/agent-prompt.html');
  assert.equal(await page.evaluate(()=>document.characterSet),'UTF-8');
  assert.equal(await page.locator('[data-copy]').count(),4);
